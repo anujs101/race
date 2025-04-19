@@ -15,6 +15,7 @@ import {
   SidebarMenuItem,
 
 } from "@/components/ui/sidebar"
+import { Link } from "react-router-dom";
 
 export function NavMain({
   items
@@ -31,13 +32,13 @@ export function NavMain({
             className="group/collapsible">
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-
+                <SidebarMenuButton tooltip={item.title} asChild>
+                  <Link to={item.url} style={{display: "flex", alignItems: "center", width: "100%"}}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
                 </SidebarMenuButton>
               </CollapsibleTrigger>
-
             </SidebarMenuItem>
           </Collapsible>
         ))}

@@ -32,7 +32,7 @@ const LatexViewAndProgram = () => {
           className="border rounded-lg shadow-lg overflow-auto mx-auto absolute inset-0"
           style={{ maxWidth: '210mm', maxHeight: '297mm' }}
         >
-          {isPreview ? (
+          {1     ? (
             // Rendered PDF using react-pdf-viewer
             <Worker workerUrl="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
               <Viewer

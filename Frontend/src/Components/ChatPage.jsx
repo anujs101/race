@@ -2,69 +2,54 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Send, Paperclip, FileUp, Bot, User } from 'lucide-react';
 import FileUploadModal from '../Components/FileUploadModal ';
 
 const ChatPage = () => {
-  // State for document upload modal
   const [showModal, setShowModal] = useState(false);
   const [documentData, setDocumentData] = useState(null);
-  
-  // Original chat state
   const [messages, setMessages] = useState([
     { sender: 'bot', text: 'Hello! How can I assist you with your resume today?' },
   ]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
-  
-  // Check for document in localStorage when component mounts
+
   useEffect(() => {
     const storedDocument = localStorage.getItem('chatDocument');
-    
     if (storedDocument) {
       setDocumentData(JSON.parse(storedDocument));
-      
-      // Load any existing chat history if available
       const storedChats = localStorage.getItem('chatHistory');
       if (storedChats) {
         const parsedChats = JSON.parse(storedChats);
-        // Convert the stored chat format to match our message format
         const formattedMessages = parsedChats.map(chat => ({
           sender: chat.isUser ? 'user' : 'bot',
           text: chat.message
         }));
-        
         if (formattedMessages.length > 0) {
           setMessages(formattedMessages);
         }
       }
     } else {
-      // If no document found, show the upload modal
       setShowModal(true);
     }
   }, []);
-  
-  // Handle modal close
+
   const handleCloseModal = () => {
-    // Check if document exists after modal is closed
     const storedDocument = localStorage.getItem('chatDocument');
-    
     if (storedDocument) {
       setDocumentData(JSON.parse(storedDocument));
       setShowModal(false);
     } else {
-      // If still no document, keep modal open
       setShowModal(true);
     }
   };
-  
-  // Handle document reset
+
   const handleResetDocument = () => {
     localStorage.removeItem('chatDocument');
     setDocumentData(null);
     setShowModal(true);
   };
-  
-  // Original send message function with localStorage storage
+
   const handleSend = () => {
     if (!input.trim()) return;
     
@@ -77,86 +62,111 @@ const ChatPage = () => {
     setMessages(newMessages);
     setInput('');
     
-    // Store messages in localStorage if we have a document
     if (documentData) {
       const chatHistory = newMessages.map(msg => ({
         isUser: msg.sender === 'user',
         message: msg.text
       }));
-      
       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
     }
   };
-  
-  // Improved scroll to bottom effect
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
+
   return (
-    <Card className="h-full flex flex-col bg-transparent w-full rounded-xl border">
-      {/* Document info bar */}
-      {documentData && (
-        <div className="px-4 py-2 flex justify-between items-center border-b">
-          <div className="flex items-center">
-            <span className="font-medium text-sm">{documentData.name}</span>
-            <span className="text-xs text-muted-foreground ml-2">
-              {new Date(documentData.uploadedAt).toLocaleDateString()}
-            </span>
+    <Card className="h-[85vh] w-full rounded-xl border bg-background shadow-lg">
+      {/* Document info and chat header */}
+      <div className="p-4 border-b bg-muted/30">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-semibold">AI Resume Assistant</h2>
+            {documentData && (
+              <p className="text-sm text-muted-foreground">
+                Working on: {documentData.name} ({new Date(documentData.uploadedAt).toLocaleDateString()})
+              </p>
+            )}
           </div>
           <Button 
-            variant="ghost" 
-            size="sm" 
+            variant="outline"
+            size="sm"
             onClick={handleResetDocument}
-            className="text-xs hover:bg-secondary"
+            className="gap-2"
           >
-            Upload New Document
+            <FileUp className="h-4 w-4" />
+            Upload New
           </Button>
         </div>
-      )}
-      
-      {/* Main content area with improved layout */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Chat messages area with fixed scrolling */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 bg-background">
-          <div className="space-y-4">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[70%] px-4 py-2 rounded-2xl text-sm ${
-                    msg.sender === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-none'
-                      : 'bg-accent text-accent-foreground rounded-bl-none'
-                  }`}
-                >
-                  {msg.text}
+      </div>
+
+      <CardContent className="p-0 flex flex-col h-[calc(100%-8rem)]">
+        <div 
+          className="flex-1 overflow-y-auto p-6 space-y-4 scroll-smooth"
+          style={{
+            backgroundImage: 'radial-gradient(circle at center, rgba(var(--background)/0.1) 1px, transparent 1px)',
+            backgroundSize: '24px 24px'
+          }}
+        >
+          {messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`flex items-end gap-2 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.sender === 'bot' && (
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Bot className="h-4 w-4" />
                 </div>
+              )}
+              <div
+                className={`max-w-[70%] px-4 py-2 rounded-2xl text-sm shadow-sm
+                  ${msg.sender === 'user'
+                    ? 'bg-primary text-primary-foreground rounded-br-none'
+                    : 'bg-accent/50 text-accent-foreground rounded-bl-none'
+                  }
+                `}
+              >
+                {msg.text}
               </div>
-            ))}
-            <div ref={messagesEndRef} /> {/* Invisible element for scrolling */}
-          </div>
+              {msg.sender === 'user' && (
+                <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center">
+                  <User className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
         </div>
-        
-        {/* Input area with improved styling */}
-        <div className="border-t p-3 bg-card">
-          <div className="flex gap-2">
+
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex items-center gap-2 bg-background rounded-lg p-2 shadow-sm">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setShowModal(true)}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
             <Input
               type="text"
               placeholder="Type your message..."
-              className="flex-1"
+              className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             />
-            <Button onClick={handleSend}>Send</Button>
+            <Button 
+              onClick={handleSend}
+              className="rounded-full px-3 h-8"
+            >
+              <Send className="h-4 w-4 mr-1" />
+              Send
+            </Button>
           </div>
         </div>
-      </div>
-      
-      {/* File Upload Modal */}
+      </CardContent>
+
       <FileUploadModal 
         isOpen={showModal} 
         onClose={handleCloseModal} 

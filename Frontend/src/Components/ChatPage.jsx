@@ -31,7 +31,7 @@ const ChatPage = () => {
   }, [messages]);
 
   return (
-    <Card className="h-[100%]  w-full rounded-xl border bg-muted/30 ">
+    <Card className="h-[100%] bg-transparent  w-full rounded-xl border py-3 ">
       <CardContent className="p-0 flex flex-col h-full">
         {/* Scrollable chat area */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -54,16 +54,16 @@ const ChatPage = () => {
         </div>
 
         {/* Input bar fixed at bottom */}
-        <div className="flex items-center gap-2 p-4 border-t bg-background">
+        <div className="flex items-center p-1 border-t ">
           <Input
             type="text"
             placeholder="Type your message..."
-            className="flex-1"
+            className="flex-1 mt-2 mr-2"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
           />
-          <Button onClick={handleSend}>Send</Button>
+          <Button onClick={handleSend} className="mt-2 mr-2">Send</Button>
         </div>
       </CardContent>
     </Card>

@@ -44,6 +44,8 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "katex": "^0.16.22",
+    "latex.js": "^0.12.6",
     "lucide-react": "^0.501.0",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",

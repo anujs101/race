@@ -1,0 +1,109 @@
+Here's the updated `plan.txt` based on your new Gemini 2.0 Flash integration:
+
+### `plan.txt` – Project Plan – RACE Resume Enhancer
+
+📁 **Folder Structure**
+
+```
+race/
+├── backend/
+│   ├── app.js
+│   ├── index.js
+│   ├── .env
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── resume.js
+│   │   └── chat.js
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── resumeController.js
+│   │   └── chatController.js
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Resume.js
+│   │   └── Chat.js
+│   ├── middleware/
+│   │   └── auth.js
+│   ├── utils/
+│   │   ├── gemini.js
+│   │   └── extract.js
+├── frontend/
+```
+
+⸻
+
+### 🔐 **Authentication (JWT)**
+
+- **Routes**:  
+  - `/register`: Hash passwords and save the user data to DB.  
+  - `/login`: Verify the password and issue a JWT.  
+
+- **Error Handling**:  
+  - Catch errors for missing fields in `/register` or `/login`.  
+  - Return proper error codes (e.g., 400 for invalid inputs, 401 for invalid login).  
+  - Handle invalid JWT in the middleware (401 Unauthorized).
+
+---
+
+### 💬 **Backend API Routes**
+
+| Method | Endpoint      | Description                                           |
+|--------|---------------|-------------------------------------------------------|
+| POST   | /upload       | Upload resume file and extract its content            |
+| POST   | /enhance      | Enhance the resume with Gemini 2.0 Flash and save as LaTeX format |
+| POST   | /register     | Register a new user                                  |
+| POST   | /login        | Log in an existing user and issue JWT                |
+| POST   | /chat         | Send a user message, get a reply from Gemini 2.0 Flash, and save |
+| GET    | /chat/:resumeId | Fetch chat history for the given resume               |
+
+---
+
+### 🧠 **Models**
+
+- **User**  
+  `{ _id, email, passwordHash }`
+
+- **Resume**  
+  `{ _id, userId, originalText, createdAt }`
+
+- **Chat**  
+  `{ _id, userId, resumeId, messages: [{ role: 'user' | 'bot', msg: String }], createdAt, updatedAt }`
+
+---
+
+### 🤖 **Gemini 2.0 Flash Integration**
+
+- **API**:  
+  - Use Gemini 2.0 Flash for resume enhancement and chat replies.  
+  - Return both the enhanced resume (LaTeX) and chat history.
+
+- **Error Handling**:  
+  - Handle API errors, such as invalid API keys or rate-limiting.  
+  - Log errors in `console.log()` for debugging.
+
+---
+
+### 🧪 **Error Handling Logic**
+
+- **Global Error Handler**  
+  - Add a global error handler middleware to catch unexpected errors and return a 500 status code with a user-friendly message.  
+  - Wrap all async route logic in try-catch blocks.
+
+- **Specific Error Handlers**:  
+  - File upload: Handle file size/type validation.  
+  - Resume extraction: Handle errors in file parsing or empty data.  
+  - Gemini 2.0 Flash: Handle API errors such as rate limiting or invalid inputs.
+
+---
+
+### 🧼 **Final Polish**
+
+- **Input Validation**:  
+  - Use a library like `joi` or `zod` to validate incoming request bodies.  
+  - Check for valid email format, file types, and chat inputs.
+
+- **Logging**:  
+  - Log successful and failed requests for better debugging.  
+  - Log Gemini responses to verify outputs.
+
+---

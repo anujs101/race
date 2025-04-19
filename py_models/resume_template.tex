@@ -1,0 +1,74 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries}{}{0em}{}[\titlerule]
+
+\begin{document}
+
+\begin{center}
+    {\Huge \textbf{ {{ name }} }}\\
+    \vspace{0.2cm}
+    \href{mailto:{{ email }}}{{ email }} \\
+    {{ phone }} | {{ address }} | \href{https://{{ linkedin }}}{{ linkedin }}
+\end{center}
+
+\section*{About}
+{{ about }}
+
+{% if skills %}
+\section*{Skills}
+\begin{itemize}[leftmargin=*]
+{% for skill in skills %}
+  \item {{ skill }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if experience %}
+\section*{Experience}
+\begin{itemize}[leftmargin=*]
+{% for item in experience %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if education %}
+\section*{Education}
+\begin{itemize}[leftmargin=*]
+{% for item in education %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if projects %}
+\section*{Projects}
+\begin{itemize}[leftmargin=*]
+{% for item in projects %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if certifications %}
+\section*{Certifications}
+\begin{itemize}[leftmargin=*]
+{% for cert in certifications %}
+  \item {{ cert }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if achievements %}
+\section*{Achievements}
+\begin{itemize}[leftmargin=*]
+{% for ach in achievements %}
+  \item {{ ach }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+\end{document}

@@ -1,0 +1,14 @@
+pdfplumber
+python-docx
+pytesseract
+jinja2
+sentence-transformers
+torch
+scikit-learn
+beautifulsoup4
+requests
+serpapi
+google-generativeai
+faiss-cpu
+ipywidgets
+tqdm

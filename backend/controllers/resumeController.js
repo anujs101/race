@@ -410,6 +410,7 @@ const extractResumeText = async (req, res) => {
       You are an AI assistant helping to organize and enrich resume content.
       Given the following extracted resume text, classify it into categories:
       
+      Contact Information (including name, email, phone number, address, LinkedIn URL)
       Education
       Experience (with role, organization, duration, and a short description of what the user did)
       Projects (with name and a 1-2 sentence description of the project)
@@ -419,6 +420,13 @@ const extractResumeText = async (req, res) => {
       
       Respond in the following structured JSON format only:
       {
+        "contactInfo": {
+          "name": "...",
+          "email": "...",
+          "phone": "...",
+          "address": "...",
+          "linkedin": "..."
+        },
         "education": [ "..." ],
         "experience": [
           {
@@ -462,6 +470,17 @@ const extractResumeText = async (req, res) => {
       if (!classificationResult.education || !classificationResult.experience || 
           !classificationResult.skills || !classificationResult.projects) {
         throw new Error('Missing required classification fields');
+      }
+      
+      // Ensure contactInfo exists, even if empty
+      if (!classificationResult.contactInfo) {
+        classificationResult.contactInfo = {
+          name: "Not found",
+          email: "Not found",
+          phone: "Not found",
+          address: "Not found",
+          linkedin: "Not found"
+        };
       }
     } catch (error) {
       console.error('Error parsing Gemini response:', error);
@@ -555,16 +574,24 @@ async function extractTextUsingGeminiVision(pdfBuffer, genAI) {
     const prompt = `
       I'm uploading a resume in PDF format.
       Please extract all the text from this document as accurately as possible.
-      Focus on extracting:
-      - Name and contact information
-      - Education details
-      - Work experience with dates, titles, and descriptions
-      - Skills
-      - Projects
-      - Certifications
-      - Any other relevant information
       
-      Provide the extracted content as plain text, preserving the structure.
+      Pay special attention to extracting the following information correctly:
+      1. Full name of the person
+      2. Email address (ensure exact format with @ symbol)
+      3. Phone number (maintain the exact format as shown)
+      4. Physical address or location
+      5. LinkedIn profile URL if present
+      
+      Also focus on extracting:
+      - Education details with degrees, institutions, and graduation dates
+      - Work experience with company names, job titles, dates, and descriptions
+      - Skills (both technical and soft skills)
+      - Projects with names and descriptions
+      - Certifications
+      - Achievements
+      
+      Provide the extracted content as plain text, preserving the structure and formatting as much as possible.
+      Include ALL text you can see in the document.
       Don't analyze or comment on the content, just extract the text.
     `;
     
@@ -611,7 +638,37 @@ const generateBasicLatex = (classification) => {
 
 \\begin{document}
 
-\\section*{Education}
+`;
+
+  // Add contact information at the top
+  if (classification.contactInfo) {
+    const contactInfo = classification.contactInfo;
+    if (contactInfo.name && contactInfo.name !== "Not found") {
+      latex += `\\begin{center}\n\\textbf{\\Large ${contactInfo.name}}\n\\end{center}\n\n`;
+    }
+    
+    latex += `\\begin{center}\n`;
+    
+    const contactDetails = [];
+    if (contactInfo.email && contactInfo.email !== "Not found") {
+      contactDetails.push(`Email: ${contactInfo.email}`);
+    }
+    if (contactInfo.phone && contactInfo.phone !== "Not found") {
+      contactDetails.push(`Phone: ${contactInfo.phone}`);
+    }
+    if (contactInfo.address && contactInfo.address !== "Not found") {
+      contactDetails.push(`Address: ${contactInfo.address}`);
+    }
+    if (contactInfo.linkedin && contactInfo.linkedin !== "Not found") {
+      contactDetails.push(`LinkedIn: ${contactInfo.linkedin}`);
+    }
+    
+    latex += contactDetails.join(' $\\mid$ ');
+    latex += `\n\\end{center}\n\n`;
+  }
+
+  // Add education section
+  latex += `\\section*{Education}
 \\begin{itemize}
 `;
 

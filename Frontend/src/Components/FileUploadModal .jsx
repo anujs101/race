@@ -8,47 +8,71 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload } from "lucide-react"; // Changed from FileUpload to Upload
+import { Upload } from "lucide-react";
 
 const FileUploadModal = ({ isOpen, onClose }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState("default");
-  
-  // Template options
-  const templates = [
-    { id: "default", name: "Default Template" },
-    { id: "academic", name: "Academic Paper" },
-    { id: "resume", name: "Resume Analysis" },
-    { id: "business", name: "Business Document" }
-  ];
-  
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const validateFile = (file) => {
+    const validTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ];
+    if (validTypes.includes(file.type)) {
+      setSelectedFile(file);
+      return true;
+    }
+    alert("Please upload only PDF or DOCX files");
+    return false;
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length) {
+      validateFile(files[0]);
+    }
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check if file is PDF or DOCX
-      const fileType = file.type;
-      if (
-        fileType === "application/pdf" || 
-        fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      ) {
-        setSelectedFile(file);
-      } else {
-        alert("Please upload only PDF or DOCX files");
-      }
+      validateFile(file);
     }
   };
   
   const handleTemplateChange = (templateId) => {
     setSelectedTemplate(templateId);
   };
-  
+
   const handleSubmit = () => {
     if (!selectedFile) {
       alert("Please select a file");
       return;
     }
     
-    // Convert file to Base64 to store in localStorage
     const reader = new FileReader();
     reader.readAsDataURL(selectedFile);
     reader.onload = () => {
@@ -61,12 +85,11 @@ const FileUploadModal = ({ isOpen, onClose }) => {
         uploadedAt: new Date().toISOString()
       };
       
-      // Store in localStorage
       localStorage.setItem('chatDocument', JSON.stringify(fileData));
       onClose();
     };
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md max-h-[75vh] overflow-y-auto">
@@ -78,10 +101,25 @@ const FileUploadModal = ({ isOpen, onClose }) => {
         </DialogHeader>
         
         <div className="grid gap-6 py-4">
-          <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 hover:border-primary/50 transition-colors">
-            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground mb-2">
-              Drag and drop your file here or click to browse
+          <div
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 transition-all duration-200 ${
+              isDragging 
+                ? 'border-primary bg-primary/10' 
+                : 'border-muted-foreground/25 hover:border-primary/50'
+            }`}
+          >
+            <Upload className={`h-10 w-10 mb-2 transition-colors ${
+              isDragging ? 'text-primary' : 'text-muted-foreground'
+            }`} />
+            <p className="text-sm text-muted-foreground mb-2 text-center">
+              {isDragging 
+                ? 'Drop your file here' 
+                : 'Drag and drop your file here or click to browse'
+              }
             </p>
             <input
               type="file"

@@ -6,7 +6,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import Home from './Pages/Home'
 import CoverLetter from './Pages/CoverLetter'
 import AtsVerifier from './Pages/ATSVerifier'
-import Chat from './Pages/Chat'
+import Chat from './Pages/Chat&Latex'
 import GetJob from './Pages/GetJob'
 
 function App() {

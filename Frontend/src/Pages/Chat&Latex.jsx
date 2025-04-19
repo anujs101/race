@@ -1,22 +1,24 @@
 import React from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels"
+import ChatPage from '../Components/ChatPage'
+import LatexViewAndProgram from '../Components/LatexViewAndProgram'
 
-const Chat = () => {
+const ChatLatex = () => {
     return (
-        <div>
-            <div className="flex flex-1 flex-row p-4 pt-0 border-2">
-                <PanelGroup direction="horizontal" className="w-full">
+        <div className="h-[85vh]">
+            <div className="h-full">
+                <PanelGroup direction="horizontal" className="w-full h-full">
                     <Panel defaultSize={50} minSize={20}>
                         <div className="h-full p-4">
-                            hey
+                            <LatexViewAndProgram/>
                         </div>
                     </Panel>
                     <PanelResizeHandle className="w-2 bg-border hover:bg-primary/20 transition-colors">
                         <div className="h-full w-1 mx-auto bg-border rounded-full"></div>
                     </PanelResizeHandle>
                     <Panel defaultSize={50} minSize={20}>
-                        <div className="h-full p-4">
-                            rehan
+                        <div className="h-full">
+                            <ChatPage />
                         </div>
                     </Panel>
                 </PanelGroup>
@@ -25,4 +27,4 @@ const Chat = () => {
     )
 }
 
-export default Chat
+export default ChatLatex

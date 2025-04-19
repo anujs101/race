@@ -78,7 +78,12 @@ const generateChatResponse = async (messages, resumeText) => {
       `${m.role === 'user' ? 'User' : 'Bot'}: ${m.msg}`
     ).join('\n');
     
-    const prompt = `
+    // Check if the latest user message asks for resume improvement or LaTeX
+    const latestUserMessage = messages.filter(m => m.role === 'user').pop();
+    const isAskingForResume = latestUserMessage && isResumeFocusedRequest(latestUserMessage.msg);
+    
+    // Base prompt
+    let prompt = `
     You are RACE Bot, a resume improvement assistant.
     You help users improve their resumes with personalized advice.
     
@@ -87,10 +92,38 @@ const generateChatResponse = async (messages, resumeText) => {
     
     Previous conversation:
     ${formattedMessages}
-    
-    Provide a helpful, professional response to continue the conversation.
-    Focus on concrete, specific advice for resume improvement.
     `;
+    
+    // Add specific instructions based on the request
+    if (isAskingForResume) {
+      prompt += `
+      The user is asking for an improved resume or LaTeX format. 
+      Please provide a complete LaTeX format of an improved resume based on the original.
+      
+      Use proper LaTeX syntax with the following structure:
+      \\documentclass{article}
+      \\usepackage[utf8]{inputenc}
+      \\usepackage{hyperref}
+      ... other necessary packages ...
+      
+      \\begin{document}
+      ... resume content ...
+      \\end{document}
+      
+      Format the response as a LaTeX code block like this:
+      \`\`\`latex
+      (your LaTeX code here)
+      \`\`\`
+      `;
+    } else {
+      prompt += `
+      Provide a helpful, professional response to continue the conversation.
+      Focus on concrete, specific advice for resume improvement.
+      
+      If explicitly asked for LaTeX or resume improvements, you can provide a LaTeX formatted resume.
+      Otherwise, give advice without LaTeX formatting.
+      `;
+    }
     
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -99,6 +132,29 @@ const generateChatResponse = async (messages, resumeText) => {
     throw new Error('Failed to generate chat response with Gemini API');
   }
 };
+
+/**
+ * Check if the user message is asking for a resume or LaTeX format
+ * @param {string} message - User message
+ * @returns {boolean} True if the message is asking for a resume
+ */
+function isResumeFocusedRequest(message) {
+  const resumeKeywords = [
+    /latex/i,
+    /resume/i,
+    /improve/i,
+    /enhance/i,
+    /format/i,
+    /template/i,
+    /create new/i,
+    /generate/i,
+    /make better/i,
+    /pdf/i,
+    /document/i
+  ];
+  
+  return resumeKeywords.some(pattern => pattern.test(message));
+}
 
 /**
  * Generate cover letter using Gemini API

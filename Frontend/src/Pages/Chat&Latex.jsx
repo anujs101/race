@@ -1,7 +1,7 @@
-import React from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels"
-import ChatPage from '../Components/ChatPage'
-import LatexViewAndProgram from '../Components/LatexViewAndProgram'
+import React from 'react';
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import ChatPage from '../Components/ChatPage';
+import LatexViewAndProgram from '../Components/LatexViewAndProgram';
 
 const ChatLatex = () => {
     return (
@@ -10,7 +10,7 @@ const ChatLatex = () => {
                 <PanelGroup direction="horizontal" className="w-full h-full">
                     <Panel defaultSize={50} minSize={20}>
                         <div className="h-full p-4">
-                            <LatexViewAndProgram/>
+                            <LatexViewAndProgram />
                         </div>
                     </Panel>
                     <PanelResizeHandle className="w-2 bg-border hover:bg-primary/20 transition-colors">
@@ -24,7 +24,7 @@ const ChatLatex = () => {
                 </PanelGroup>
             </div>
         </div>
-    )
+    );
 }
 
-export default ChatLatex
+export default ChatLatex;

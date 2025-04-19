@@ -1,0 +1,127 @@
+import { useState, useEffect } from 'react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Upload } from "lucide-react"; // Changed from FileUpload to Upload
+
+const FileUploadModal = ({ isOpen, onClose }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState("default");
+  
+  // Template options
+  const templates = [
+    { id: "default", name: "Default Template" },
+    { id: "academic", name: "Academic Paper" },
+    { id: "resume", name: "Resume Analysis" },
+    { id: "business", name: "Business Document" }
+  ];
+  
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check if file is PDF or DOCX
+      const fileType = file.type;
+      if (
+        fileType === "application/pdf" || 
+        fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ) {
+        setSelectedFile(file);
+      } else {
+        alert("Please upload only PDF or DOCX files");
+      }
+    }
+  };
+  
+  const handleTemplateChange = (templateId) => {
+    setSelectedTemplate(templateId);
+  };
+  
+  const handleSubmit = () => {
+    if (!selectedFile) {
+      alert("Please select a file");
+      return;
+    }
+    
+    // Convert file to Base64 to store in localStorage
+    const reader = new FileReader();
+    reader.readAsDataURL(selectedFile);
+    reader.onload = () => {
+      const fileData = {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        content: reader.result,
+        template: selectedTemplate,
+        uploadedAt: new Date().toISOString()
+      };
+      
+      // Store in localStorage
+      localStorage.setItem('chatDocument', JSON.stringify(fileData));
+      onClose();
+    };
+  };
+  
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md max-h-[75vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Upload Document</DialogTitle>
+          <DialogDescription>
+            Please upload a PDF or DOCX file to continue
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-6 py-4">
+          <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 hover:border-primary/50 transition-colors">
+            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground mb-2">
+              Drag and drop your file here or click to browse
+            </p>
+            <input
+              type="file"
+              accept=".pdf,.docx"
+              onChange={handleFileChange}
+              className="w-full"
+            />
+            {selectedFile && (
+              <p className="text-sm font-medium mt-2">
+                Selected: {selectedFile.name}
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <h3 className="text-sm font-medium mb-2">Select Template</h3>
+            <Tabs 
+              defaultValue="default" 
+              value={selectedTemplate} 
+              onValueChange={handleTemplateChange}
+              className="w-full"
+            >
+              <TabsList className="grid grid-cols-2 mb-2">
+                <TabsTrigger value="default">General</TabsTrigger>
+                <TabsTrigger value="academic">Academic</TabsTrigger>
+              </TabsList>
+              <TabsList className="grid grid-cols-2">
+                <TabsTrigger value="resume">Resume</TabsTrigger>
+                <TabsTrigger value="business">Business</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          
+          <Button onClick={handleSubmit} className="w-full">
+            Upload and Continue
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default FileUploadModal;

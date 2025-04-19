@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import LatexRenderer from './LatexRender';
+import { Worker, Viewer } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 const LatexViewAndProgram = () => {
   const [isPreview, setIsPreview] = useState(false);
-  const [code, setCode] = useState(`\\documentclass{article}
-\\begin{document}
-\\section*{Sample}
-This is a simple LaTeX A4 document.
+  const [base64Data, setBase64Data] = useState(''); // State for base64 data
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
-Some math: $E = mc^2$
-\\end{document}`);
+  const pdfDataUrl = `data:application/pdf;base64,${base64Data}`;
 
   return (
-    <div className="p-4 space-y-4 h-full flex flex-col">
+    <div className="p-1 space-y-4 h-full flex flex-col">
       {/* Mode toggle */}
-      <div className="flex items-center space-x-2">
+      {/* <div className="flex items-center space-x-2">
         <Label htmlFor="mode-switch">Code</Label>
         <Switch
           id="mode-switch"
@@ -25,7 +24,7 @@ Some math: $E = mc^2$
           onCheckedChange={setIsPreview}
         />
         <Label htmlFor="mode-switch">Preview</Label>
-      </div>
+      </div> */}
 
       {/* A4 container with proper overflow handling */}
       <div className="flex-grow relative">
@@ -34,16 +33,20 @@ Some math: $E = mc^2$
           style={{ maxWidth: '210mm', maxHeight: '297mm' }}
         >
           {isPreview ? (
-            // Rendered LaTeX → HTML using LatexRenderer
-            <div className="p-4 bg-white h-full">
-              <LatexRenderer latexString={code} />
-            </div>
+            // Rendered PDF using react-pdf-viewer
+            <Worker workerUrl="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js">
+              <Viewer
+                fileUrl={pdfDataUrl}
+                plugins={[defaultLayoutPluginInstance]}
+              />
+            </Worker>
           ) : (
-            // Code editor
-            <Textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
+            // Code editor for testing
+            <textarea
+              value={base64Data}
+              onChange={(e) => setBase64Data(e.target.value)}
               className="h-full w-full border-0 focus:ring-0 font-mono resize-none"
+              placeholder="Enter base64 encoded PDF here..."
             />
           )}
         </div>

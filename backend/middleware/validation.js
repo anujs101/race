@@ -150,6 +150,37 @@ const validateJobMatch = (req, res, next) => {
   next();
 };
 
+// Enhanced cover letter generation validation
+const validateEnhancedCoverLetter = (req, res, next) => {
+  const { jobTitle, companyName, jobDescription } = req.body;
+  const errors = [];
+
+  // Job title validation
+  if (!jobTitle || jobTitle.trim() === '') {
+    errors.push('Job title is required');
+  }
+  
+  // Company name validation
+  if (!companyName || companyName.trim() === '') {
+    errors.push('Company name is required');
+  }
+  
+  // Job description validation
+  if (!jobDescription || jobDescription.trim() === '') {
+    errors.push('Job description is required');
+  }
+
+  // Return errors if any
+  if (errors.length > 0) {
+    return res.status(400).json({ 
+      status: 'error',
+      message: errors.join('. ')
+    });
+  }
+  
+  next();
+};
+
 module.exports = {
   validateRegister,
   validateLogin,
@@ -157,5 +188,6 @@ module.exports = {
   validateEnhancement,
   validateCoverLetter,
   validateChatMessage,
-  validateJobMatch
+  validateJobMatch,
+  validateEnhancedCoverLetter
 }; 

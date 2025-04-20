@@ -275,6 +275,124 @@ const generateCoverLetterForResume = async (req, res) => {
 };
 
 /**
+ * Generate an enhanced cover letter for a resume using Python script
+ * @route POST /api/resume/generate-cover-letter/:resumeId
+ */
+const generateEnhancedCoverLetterForResume = async (req, res) => {
+  try {
+    console.log('generateEnhancedCoverLetterForResume called with params:', {
+      resumeId: req.params.resumeId,
+      body: JSON.stringify(req.body)
+    });
+    
+    const { resumeId } = req.params;
+    const { jobTitle, companyName, jobDescription } = req.body;
+
+    // Input validation with detailed error messages
+    const missingFields = [];
+    if (!jobTitle || jobTitle.trim() === '') missingFields.push('jobTitle');
+    if (!companyName || companyName.trim() === '') missingFields.push('companyName');
+    if (!jobDescription || jobDescription.trim() === '') missingFields.push('jobDescription');
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Missing required fields: ${missingFields.join(', ')}`
+      });
+    }
+
+    // Find resume and validate ownership
+    const resume = await Resume.findOne({
+      _id: resumeId,
+      userId: req.user._id
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Resume not found or you do not have permission to access it'
+      });
+    }
+
+    // Get latest version text or original if no versions
+    const latestVersion = resume.versions.length > 0 
+      ? resume.versions[resume.versions.length - 1].text 
+      : resume.originalText;
+
+    // Path to Python script
+    const scriptPath = path.join(__dirname, '../scripts/cover_letter_generator.py');
+    
+    // Import Python bridge
+    const { executePythonScript } = require('../utils/pythonBridge');
+    
+    // Prepare parameters for Python script
+    const scriptParams = {
+      resumeText: latestVersion,
+      jobTitle,
+      jobDescription,
+      companyName
+    };
+    
+    console.log(`Executing cover letter generator script with params: ${JSON.stringify({
+      resumeId,
+      jobTitle,
+      companyName,
+      jobDescriptionLength: jobDescription.length
+    })}`);
+    
+    // Execute Python script
+    try {
+      const result = await executePythonScript(scriptPath, scriptParams);
+      
+      // Check if the script returned an error
+      if (result.status === 'error') {
+        console.error('Error from Python script:', result.message);
+        return res.status(500).json({
+          status: 'error',
+          message: result.message || 'Error generating cover letter'
+        });
+      }
+      
+      // Save the cover letter to the resume document
+      const coverLetterVersions = resume.coverLetters || [];
+      coverLetterVersions.push({
+        jobTitle,
+        companyName,
+        content: result.data.coverLetter,
+        createdAt: new Date()
+      });
+      
+      resume.coverLetters = coverLetterVersions;
+      await resume.save();
+      
+      // Return the cover letter
+      return res.status(200).json({
+        status: 'success',
+        message: 'Cover letter generated successfully',
+        data: {
+          coverLetter: result.data.coverLetter,
+          metadata: result.data.metadata
+        }
+      });
+    } catch (scriptError) {
+      console.error('Error executing Python script:', scriptError);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Server error generating cover letter',
+        error: process.env.NODE_ENV === 'development' ? scriptError.message : undefined
+      });
+    }
+  } catch (error) {
+    console.error('Error in generateEnhancedCoverLetterForResume:', error);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Server error generating cover letter',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
  * Score resume for ATS compatibility
  * @route POST /api/resume/ats-score/:resumeId
  */
@@ -750,6 +868,7 @@ module.exports = {
   saveEnhancedResume,
   getResumeVersions,
   generateCoverLetterForResume,
+  generateEnhancedCoverLetterForResume,
   scoreResumeForATS,
   getAllResumes,
   extractResumeText

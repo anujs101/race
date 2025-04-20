@@ -5,12 +5,17 @@ const {
   enhanceResume, 
   saveEnhancedResume,
   generateCoverLetterForResume,
+  generateEnhancedCoverLetterForResume,
   scoreResumeForATS,
   getAllResumes,
   extractResumeText
 } = require('../controllers/resumeController');
 const authenticate = require('../middleware/auth');
-const { validateEnhancement } = require('../middleware/validation');
+const { 
+  validateEnhancement, 
+  validateCoverLetter,
+  validateEnhancedCoverLetter
+} = require('../middleware/validation');
 
 // Add multer for file uploads
 const multer = require('multer');
@@ -41,8 +46,11 @@ router.post('/enhance/:resumeId', validateEnhancement, enhanceResume);
 // Save enhanced resume version
 router.post('/save/:resumeId', saveEnhancedResume);
 
-// Generate cover letter
-router.post('/cover-letter/:resumeId', validateEnhancement, generateCoverLetterForResume);
+// Generate cover letter using Gemini API
+router.post('/cover-letter/:resumeId', validateCoverLetter, generateCoverLetterForResume);
+
+// Generate enhanced cover letter using Python script
+router.post('/generate-cover-letter/:resumeId', validateEnhancedCoverLetter, generateEnhancedCoverLetterForResume);
 
 // Score resume against job description
 router.post('/ats-score/:resumeId', validateEnhancement, scoreResumeForATS);

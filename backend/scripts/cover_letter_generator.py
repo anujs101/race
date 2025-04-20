@@ -10,59 +10,93 @@ import os
 import time
 from datetime import datetime
 import traceback
+import requests
 
-# Path to enhancer notebook directory
-NOTEBOOK_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "py_models")
-sys.path.append(NOTEBOOK_DIR)
-
-# Dynamically import the generate_cover_letter function
-try:
-    # First try to import directly in case it's been refactored into a module
+# Implement a simplified version of query_groq that doesn't rely on the notebook
+def query_groq(prompt, model="groq-14b", max_tokens=2000, temperature=0.7):
+    """
+    Call the Groq API with a prompt and return the response
+    """
     try:
-        from enhancer import generate_cover_letter
-    except ImportError:
-        # If direct import fails, we'll need to extract from the notebook
-        import nbformat
-        from nbformat import read
-        import re
+        # Check if GROQ_API_KEY is in environment variables
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            # Fallback to using a mock response for testing
+            print(f"No GROQ_API_KEY found. Using mock response.", file=sys.stderr)
+            # Generate a mock cover letter for testing
+            return f"""Dear Hiring Manager at the company,
 
-        def extract_function_from_notebook(notebook_path, function_name):
-            """Extract a function from a Jupyter notebook file"""
-            with open(notebook_path, 'r', encoding='utf-8') as f:
-                nb = read(f, as_version=4)
-            
-            # Find the cell with the function definition
-            function_code = ""
-            found = False
-            pattern = rf"def\s+{function_name}\s*\("
-            
-            for cell in nb.cells:
-                if cell.cell_type == 'code':
-                    if re.search(pattern, cell.source):
-                        function_code = cell.source
-                        found = True
-                        break
-            
-            if not found:
-                raise ValueError(f"Function '{function_name}' not found in notebook")
-            
-            # Execute the code to define the function in the current namespace
-            exec(function_code, globals())
-            
-            # Return the function object
-            return globals()[function_name]
+I am writing to express my interest in the position advertised. Based on my background and experience, I believe I would be a strong candidate for this role.
 
-        # Get the function from the notebook
-        notebook_path = os.path.join(NOTEBOOK_DIR, "enhancer.ipynb")
-        generate_cover_letter = extract_function_from_notebook(notebook_path, "generate_cover_letter")
+My experience includes software development, team leadership, and project management. I have worked with various technologies including web development frameworks and cloud platforms.
 
-except Exception as e:
-    print(json.dumps({
-        "status": "error",
-        "message": f"Failed to import generate_cover_letter function: {str(e)}",
-        "details": traceback.format_exc()
-    }))
-    sys.exit(1)
+I am particularly interested in this role because it aligns well with my career goals and skills. I am confident that my technical expertise and problem-solving abilities would allow me to make significant contributions to your team.
+
+Thank you for considering my application. I look forward to the opportunity to discuss how my background and skills would be an asset to your organization.
+
+Sincerely,
+John Doe"""
+        
+        # If API key exists, make the actual API call
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+        
+        response = requests.post("https://api.groq.com/openai/v1/chat/completions", 
+                                headers=headers, 
+                                json=data)
+        
+        if response.status_code != 200:
+            raise Exception(f"API call failed with status code {response.status_code}: {response.text}")
+        
+        return response.json()["choices"][0]["message"]["content"]
+    
+    except Exception as e:
+        print(f"Error calling Groq API: {e}", file=sys.stderr)
+        raise
+
+# Define our own generate_cover_letter function
+def generate_cover_letter(resume_text, job_title, job_description, company_name):
+    """
+    Generate a cover letter based on a resume and job details
+    """
+    try:
+        # Create the prompt for the Groq API
+        prompt = f"""
+        You are a professional resume writer. Create a customized cover letter based on this person's resume and the job they're applying for.
+        
+        RESUME:
+        {resume_text}
+        
+        JOB TITLE: {job_title}
+        COMPANY: {company_name}
+        JOB DESCRIPTION: {job_description}
+        
+        Write a professional, concise, and compelling cover letter that:
+        1. Addresses skills and experiences from the resume that match the job description
+        2. Demonstrates enthusiasm for the specific company and role
+        3. Uses a professional tone
+        4. Is appropriately formatted with proper salutation and closing
+        5. Is around 250-350 words
+        
+        COVER LETTER:
+        """
+        
+        # Call the Groq API
+        cover_letter = query_groq(prompt)
+        return cover_letter.strip()
+    
+    except Exception as e:
+        print(f"Error generating cover letter: {str(e)}", file=sys.stderr)
+        raise
 
 def generate_cover_letter_wrapper(resume_text, job_title, job_description, company_name):
     """

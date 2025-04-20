@@ -124,11 +124,38 @@ const validateChatMessage = (req, res, next) => {
   next();
 };
 
+// Job matching validation
+const validateJobMatch = (req, res, next) => {
+  const { jobTitle, location, limit } = req.body;
+  const errors = [];
+
+  // Job title is required
+  if (!jobTitle || jobTitle.trim() === '') {
+    errors.push('Job title is required');
+  }
+  
+  // Validate limit if provided
+  if (limit && (isNaN(limit) || parseInt(limit, 10) <= 0)) {
+    errors.push('Limit must be a positive number');
+  }
+
+  // Return errors if any
+  if (errors.length > 0) {
+    return res.status(400).json({ 
+      status: 'error',
+      message: errors.join('. ')
+    });
+  }
+  
+  next();
+};
+
 module.exports = {
   validateRegister,
   validateLogin,
   validateResumeUpload,
   validateEnhancement,
   validateCoverLetter,
-  validateChatMessage
+  validateChatMessage,
+  validateJobMatch
 }; 

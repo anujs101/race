@@ -1,0 +1,137 @@
+# Job Matching API Endpoint Implementation Plan
+
+## Overview
+I'll create a new API endpoint that leverages the existing job matching functionality from the Jupyter notebook to find relevant job matches based on user input, making minimal changes to the notebook code.
+
+## Analysis of Job Matching Function
+From analyzing the `py_models/enhancer.ipynb` notebook:
+- The notebook contains functions for job searching and matching using embeddings and FAISS
+- It returns job matches based on similarity to a resume or job description
+- It uses SerpAPI for job searching and sentence-transformers for embedding
+- The matching functionality can be adapted with minimal changes
+
+## Implementation Plan
+
+### 1. Create Python Bridge Module
+Similar to the cover letter plan, create a file `backend/utils/pythonBridge.js`:
+
+```javascript
+// Will use child_process to execute Python code
+// Will pass parameters as JSON and receive results as JSON
+```
+
+### 2. Endpoint Design
+Add a new endpoint to the job routes:
+
+**Route**: `POST /api/jobs/find-matches`
+
+**Request Body**:
+```json
+{
+  "resumeId": "60d0fe4f5311236168a109ca",
+  "jobTitle": "Software Engineer",
+  "location": "San Francisco",
+  "limit": 5
+}
+```
+
+**Response Format**:
+```json
+{
+  "status": "success",
+  "data": {
+    "matches": [
+      {
+        "title": "Senior Software Engineer",
+        "company": "Tech Company Inc.",
+        "description": "We are looking for a skilled developer...",
+        "location": "San Francisco, CA",
+        "applicationLink": "https://example.com/apply",
+        "similarityScore": 0.89
+      },
+      // Additional matches...
+    ],
+    "metadata": {
+      "query": {
+        "jobTitle": "Software Engineer",
+        "location": "San Francisco"
+      },
+      "total": 5,
+      "generatedAt": "2023-05-30T15:30:00Z"
+    }
+  }
+}
+```
+
+### 3. Controller Function
+Create a controller function in `backend/controllers/jobController.js`:
+
+```javascript
+// Will fetch resume data if resumeId is provided
+// Will call Python bridge to execute job matching function
+// Will format and return the response
+```
+
+### 4. Input Validation
+Create validation middleware in `backend/middleware/validation.js`:
+
+```javascript
+// Will validate job search parameters (title, location)
+// Will validate resumeId if provided
+```
+
+### 5. Error Handling
+Add specific error handling for:
+- Invalid search parameters
+- SerpAPI errors or rate limiting
+- Python execution errors
+- FAISS indexing/search errors
+- Invalid embedding format
+
+### 6. Python Script Adapter
+Create a script that will:
+1. Import the necessary functions from the notebook
+2. Accept parameters via command line arguments
+3. Execute the job search and matching
+4. Return the result as clean JSON
+
+## Implementation Details
+
+### Route Registration
+Create a new routes file `backend/routes/jobs.js`:
+```javascript
+router.post('/find-matches', authenticate, validateJobMatchRequest, findJobMatchesController);
+```
+
+### Python Bridge Function
+The bridge will:
+1. Spawn a Python process with the appropriate script
+2. Pass search parameters as JSON
+3. Capture stdout/stderr for the results and errors
+4. Parse the JSON response
+5. Handle timeouts and errors appropriately
+
+### Resume Integration (Optional)
+If a resumeId is provided:
+1. Fetch the resume data
+2. Extract text to use for enhancing the job matching
+3. Pass the resume text to the Python function for better matching
+
+### Security Considerations
+- Input sanitization to prevent injection attacks
+- Rate limiting to prevent SerpAPI usage abuse
+- Timeouts to prevent long-running processes
+- API key protection for SerpAPI
+
+## Minimal Changes to enhancer.ipynb
+To make the job matching functionality work as an API:
+- Extract the `get_multiple_jobs_with_pagination` function and related embedding functions
+- Add a wrapper function that combines search and matching
+- Ensure it can accept command-line inputs
+- Add proper error handling and JSON output formatting
+
+## Testing Strategy
+1. Unit tests for the validation middleware
+2. Integration tests for the Python bridge
+3. End-to-end tests with mock data for SerpAPI responses
+4. Performance testing for response time optimization 

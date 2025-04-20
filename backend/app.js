@@ -44,6 +44,7 @@ app.get('/', (req, res) => {
 app.use('/api/users', require('./routes/users'));
 app.use('/api/resume', require('./routes/resume'));
 app.use('/api/chat', require('./routes/chat'));
+app.use('/api/jobs', require('./routes/jobs'));
 
 // 404 Handler for undefined routes
 app.use((req, res) => {

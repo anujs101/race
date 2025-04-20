@@ -54,6 +54,10 @@ app.use((req, res) => {
   });
 });
 
+app.use('/api/rehan', (req, res) => {
+  
+})
+
 // Error handling middleware
 app.use(errorHandler);
 

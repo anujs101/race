@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { FileText, Upload, ArrowRight, Check, Crown } from 'lucide-react';
+import { FileText, Upload, ArrowRight, Check, Crown, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 const CoverLetter = () => {
+  const [jobTitle, setJobTitle] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [uploadedFile, setUploadedFile] = useState(null);
   const [generationStatus, setGenerationStatus] = useState('idle'); // idle, generating, complete
   const [activeTab, setActiveTab] = useState('upload');
+  const baseUrl = "https://49d8-103-104-226-58.ngrok-free.app/api/";
+  const [generatedData, setGeneratedData] = useState({
+    resume: null,
+    coverLetter: null
+  });
+  const [error, setError] = useState(null);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -30,18 +40,77 @@ const CoverLetter = () => {
     }
   };
 
-  const generateDocuments = () => {
-    if (!jobDescription || !uploadedFile) {
+  const generateDocuments = async () => {
+    if (!jobDescription || !uploadedFile || !jobTitle) {
       return;
     }
     
     setGenerationStatus('generating');
+    setError(null);
     
-    // Simulate generation process
-    setTimeout(() => {
-      setGenerationStatus('complete');
-      setActiveTab('results');
-    }, 3000);
+    try {
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+      
+      // Create form data to send the file and other data
+      const formData = new FormData();
+      formData.append('resume', uploadedFile);
+      formData.append('jobTitle', jobTitle);
+      formData.append('jobDescription', jobDescription);
+      
+      // Make API request
+      const response = await axios.post(
+        `${baseUrl}resume/generate-cover-letter`, 
+        formData,
+        {
+          headers: {
+            'Authorization': `${authToken}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      // Handle successful response
+      if (response.data && response.data.data) {
+        setGeneratedData({
+          resume: response.data.data.resume || null,
+          coverLetter: response.data.data.coverLetter || null
+        });
+        setGenerationStatus('complete');
+        setActiveTab('results');
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      console.error('Error generating documents:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to generate documents');
+      setGenerationStatus('idle');
+    }
+  };
+
+  const downloadDocument = (docType) => {
+    const data = docType === 'resume' ? generatedData.resume : generatedData.coverLetter;
+    
+    if (!data) return;
+    
+    // Create a blob from the data
+    const blob = new Blob([data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link and trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = docType === 'resume' ? 'tailored-resume.pdf' : 'cover-letter.pdf';
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   return (
@@ -53,6 +122,15 @@ const CoverLetter = () => {
           <span className="text-sm font-medium">Premium</span>
         </div>
       </div>
+
+      {error && (
+        <Alert className="mb-6 bg-red-50 border-red-200">
+          <AlertTitle className="text-red-800">Error</AlertTitle>
+          <AlertDescription className="text-red-700">
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid grid-cols-3 mb-8">
@@ -110,18 +188,32 @@ const CoverLetter = () => {
         <TabsContent value="job" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Job Description</CardTitle>
+              <CardTitle>Job Details</CardTitle>
               <CardDescription>
-                Paste the job description to customize your resume and cover letter
+                Enter the job title and paste the job description to customize your resume and cover letter
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Paste job description here..."
-                className="min-h-64"
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-              />
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="job-title">Job Title</Label>
+                <Input
+                  id="job-title"
+                  placeholder="Enter job title..."
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="job-description">Job Description</Label>
+                <Textarea
+                  id="job-description"
+                  placeholder="Paste job description here..."
+                  className="min-h-64"
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={() => setActiveTab('upload')}>
@@ -129,9 +221,14 @@ const CoverLetter = () => {
               </Button>
               <Button 
                 onClick={generateDocuments} 
-                disabled={!jobDescription || generationStatus === 'generating'}
+                disabled={!jobDescription || !jobTitle || generationStatus === 'generating'}
               >
-                {generationStatus === 'generating' ? 'Generating...' : 'Generate Documents'}
+                {generationStatus === 'generating' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : 'Generate Documents'}
               </Button>
             </CardFooter>
           </Card>
@@ -157,10 +254,22 @@ const CoverLetter = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="h-64 bg-gray-50 flex items-center justify-center border rounded-md">
-                    <FileText className="w-16 h-16 text-gray-300" />
+                    {generatedData.resume ? (
+                      <iframe 
+                        src={`data:application/pdf;base64,${generatedData.resume}`} 
+                        className="w-full h-full"
+                        title="Tailored Resume"
+                      />
+                    ) : (
+                      <FileText className="w-16 h-16 text-gray-300" />
+                    )}
                   </CardContent>
                   <CardFooter>
-                    <Button className="w-full">
+                    <Button 
+                      className="w-full"
+                      onClick={() => downloadDocument('resume')}
+                      disabled={!generatedData.resume}
+                    >
                       Download Resume
                     </Button>
                   </CardFooter>
@@ -174,10 +283,22 @@ const CoverLetter = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="h-64 bg-gray-50 flex items-center justify-center border rounded-md">
-                    <FileText className="w-16 h-16 text-gray-300" />
+                    {generatedData.coverLetter ? (
+                      <iframe 
+                        src={`data:application/pdf;base64,${generatedData.coverLetter}`} 
+                        className="w-full h-full"
+                        title="Cover Letter"
+                      />
+                    ) : (
+                      <FileText className="w-16 h-16 text-gray-300" />
+                    )}
                   </CardContent>
                   <CardFooter>
-                    <Button className="w-full">
+                    <Button 
+                      className="w-full"
+                      onClick={() => downloadDocument('coverLetter')}
+                      disabled={!generatedData.coverLetter}
+                    >
                       Download Cover Letter
                     </Button>
                   </CardFooter>

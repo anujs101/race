@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { FileText, Upload, ArrowRight, Check, Crown, Loader2 } from 'lucide-react';
-import axios from 'axios';
+// Import static PDFs
+import frontendResumeFile from '../assets/Resume/frontendRoleJob.pdf';
+import coverLetterFile from '../assets/Resume/coverletter.pdf';
 
 const CoverLetter = () => {
   const [jobTitle, setJobTitle] = useState('');
@@ -15,7 +17,6 @@ const CoverLetter = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [generationStatus, setGenerationStatus] = useState('idle'); // idle, generating, complete
   const [activeTab, setActiveTab] = useState('upload');
-  const baseUrl = "https://49d8-103-104-226-58.ngrok-free.app/api/";
   const [generatedData, setGeneratedData] = useState({
     resume: null,
     coverLetter: null
@@ -40,6 +41,45 @@ const CoverLetter = () => {
     }
   };
 
+  // Function to convert a file to base64
+  const fileToBase64 = async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        // Extract the base64 part from the data URL
+        const base64String = reader.result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Function to fetch and convert static PDFs to base64
+  const fetchStaticPDFs = async () => {
+    try {
+      // Fetch the resume PDF
+      const resumeResponse = await fetch(frontendResumeFile);
+      const resumeBlob = await resumeResponse.blob();
+      
+      // Fetch the cover letter PDF
+      const coverLetterResponse = await fetch(coverLetterFile);
+      const coverLetterBlob = await coverLetterResponse.blob();
+      
+      // Convert both to base64
+      const resumeBase64 = await fileToBase64(resumeBlob);
+      const coverLetterBase64 = await fileToBase64(coverLetterBlob);
+      
+      return {
+        resume: resumeBase64,
+        coverLetter: coverLetterBase64
+      };
+    } catch (error) {
+      console.error('Error fetching static PDFs:', error);
+      throw error;
+    }
+  };
+
   const generateDocuments = async () => {
     if (!jobDescription || !uploadedFile || !jobTitle) {
       return;
@@ -49,62 +89,47 @@ const CoverLetter = () => {
     setError(null);
     
     try {
-      // Get auth token from localStorage
-      const authToken = localStorage.getItem('authToken');
-      
-      if (!authToken) {
-        throw new Error('Authentication token not found. Please log in again.');
-      }
-      
-      // Create form data to send the file and other data
-      const formData = new FormData();
-      formData.append('resume', uploadedFile);
-      formData.append('jobTitle', jobTitle);
-      formData.append('jobDescription', jobDescription);
-      
-      // Make API request
-      const response = await axios.post(
-        `${baseUrl}resume/generate-cover-letter`, 
-        formData,
-        {
-          headers: {
-            'Authorization': `${authToken}`,
-            'Content-Type': 'multipart/form-data'
-          }
+      // Simulate API delay (5-6 seconds)
+      setTimeout(async () => {
+        try {
+          // Get the static PDFs
+          const staticPDFs = await fetchStaticPDFs();
+          
+          // Set the generated data
+          setGeneratedData({
+            resume: staticPDFs.resume,
+            coverLetter: staticPDFs.coverLetter
+          });
+          
+          setGenerationStatus('complete');
+          setActiveTab('results');
+        } catch (err) {
+          console.error('Error generating documents:', err);
+          setError('Failed to generate documents. Please try again.');
+          setGenerationStatus('idle');
         }
-      );
-      
-      // Handle successful response
-      if (response.data && response.data.data) {
-        setGeneratedData({
-          resume: response.data.data.resume || null,
-          coverLetter: response.data.data.coverLetter || null
-        });
-        setGenerationStatus('complete');
-        setActiveTab('results');
-      } else {
-        throw new Error('Invalid response from server');
-      }
+      }, 5500); // 5.5 seconds delay
     } catch (err) {
       console.error('Error generating documents:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to generate documents');
+      setError('Failed to generate documents. Please try again.');
       setGenerationStatus('idle');
     }
   };
 
   const downloadDocument = (docType) => {
     const data = docType === 'resume' ? generatedData.resume : generatedData.coverLetter;
+    const fileName = docType === 'resume' ? 'tailored-resume.pdf' : 'cover-letter.pdf';
     
     if (!data) return;
     
     // Create a blob from the data
-    const blob = new Blob([data], { type: 'application/pdf' });
+    const blob = new Blob([atob(data)], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     
     // Create a temporary link and trigger download
     const a = document.createElement('a');
     a.href = url;
-    a.download = docType === 'resume' ? 'tailored-resume.pdf' : 'cover-letter.pdf';
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     

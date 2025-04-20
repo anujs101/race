@@ -14,9 +14,9 @@ function App() {
     <ThemeProvider defaultTheme="light">
       <BrowserRouter>
         <Routes>
+            <Route path="/" element={<Home />} />
           <Route path='/dashboard' element={<Dashboard />} >
-            <Route index element={<Home />} />
-            <Route path="home" element={<Home />} />
+            <Route index element={<Chat />} />
             <Route path="cover" element={<CoverLetter />} />
             <Route path="ats-verifier" element={<AtsVerifier />} />
             <Route path="chat" element={<Chat />} />

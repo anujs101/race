@@ -286,19 +286,31 @@ const generateEnhancedCoverLetterForResume = async (req, res) => {
     });
     
     const { resumeId } = req.params;
-    const { jobTitle, companyName, jobDescription } = req.body;
+    
+    // Use normalized parameters from validation middleware if available, otherwise extract them directly
+    let jobTitle, companyName, jobDescription;
+    
+    if (req.body.normalizedParams) {
+      // Use already validated and normalized parameters
+      ({ jobTitle, companyName, jobDescription } = req.body.normalizedParams);
+    } else {
+      // Handle both parameter naming formats directly (API standard and frontend format)
+      jobTitle = req.body.jobTitle || req.body.selected_job_title;
+      companyName = req.body.companyName;
+      jobDescription = req.body.jobDescription || req.body.selected_job_description;
+      
+      // Input validation with detailed error messages
+      const missingFields = [];
+      if (!jobTitle || jobTitle.trim() === '') missingFields.push('jobTitle/selected_job_title');
+      if (!companyName || companyName.trim() === '') missingFields.push('companyName');
+      if (!jobDescription || jobDescription.trim() === '') missingFields.push('jobDescription/selected_job_description');
 
-    // Input validation with detailed error messages
-    const missingFields = [];
-    if (!jobTitle || jobTitle.trim() === '') missingFields.push('jobTitle');
-    if (!companyName || companyName.trim() === '') missingFields.push('companyName');
-    if (!jobDescription || jobDescription.trim() === '') missingFields.push('jobDescription');
-
-    if (missingFields.length > 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Missing required fields: ${missingFields.join(', ')}`
-      });
+      if (missingFields.length > 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: `Missing required fields: ${missingFields.join(', ')}`
+        });
+      }
     }
 
     // Find resume and validate ownership

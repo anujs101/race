@@ -152,12 +152,16 @@ const validateJobMatch = (req, res, next) => {
 
 // Enhanced cover letter generation validation
 const validateEnhancedCoverLetter = (req, res, next) => {
-  const { jobTitle, companyName, jobDescription } = req.body;
+  // Handle both parameter naming formats (API standard and frontend format)
+  const jobTitle = req.body.jobTitle || req.body.selected_job_title;
+  const companyName = req.body.companyName;
+  const jobDescription = req.body.jobDescription || req.body.selected_job_description;
+  
   const errors = [];
 
   // Job title validation
   if (!jobTitle || jobTitle.trim() === '') {
-    errors.push('Job title is required');
+    errors.push('Job title is required (jobTitle or selected_job_title)');
   }
   
   // Company name validation
@@ -167,7 +171,7 @@ const validateEnhancedCoverLetter = (req, res, next) => {
   
   // Job description validation
   if (!jobDescription || jobDescription.trim() === '') {
-    errors.push('Job description is required');
+    errors.push('Job description is required (jobDescription or selected_job_description)');
   }
 
   // Return errors if any
@@ -177,6 +181,13 @@ const validateEnhancedCoverLetter = (req, res, next) => {
       message: errors.join('. ')
     });
   }
+  
+  // Add normalized parameters to the request for easier handling in the controller
+  req.body.normalizedParams = {
+    jobTitle,
+    companyName,
+    jobDescription
+  };
   
   next();
 };

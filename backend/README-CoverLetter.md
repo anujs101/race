@@ -24,6 +24,9 @@ The Cover Letter Generation API endpoint allows users to create professionally w
 }
 ```
 
+**Frontend Integration Note:**
+The frontend will provide the job title as `selected_job_title` and job description as `selected_job_description`. The API expects these parameters as `jobTitle` and `jobDescription` respectively. Be sure to map these parameters correctly when integrating with the frontend.
+
 **Response:**
 ```json
 {
@@ -113,6 +116,9 @@ The API may return the following error responses:
      "jobDescription": "We are looking for a skilled developer with experience in JavaScript, React, and Node.js..."
    }
    ```
+   
+   Note: If you're testing with data directly from the frontend, you might need to adjust the parameter names from `selected_job_title` to `jobTitle` and from `selected_job_description` to `jobDescription`.
+   
 5. Send the request
 
 ### Common Errors and Troubleshooting
@@ -139,8 +145,10 @@ The API may return the following error responses:
 - **Possible causes:**
   - Missing job title, company name, or job description in request
   - Empty fields in request
+  - Frontend parameter names don't match API expectations (`selected_job_title` vs `jobTitle`)
 - **Solution:**
   - Check that your JSON body includes all required fields with non-empty values
+  - Ensure parameter names match what the API expects
 
 #### 4. "Resume not found"
 - **Possible causes:**

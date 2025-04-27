@@ -1,0 +1,88 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=0.7in]{geometry} % Reduced margin from 1in to 0.7in
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{parskip} % No indentation, cleaner paragraph start
+
+% Section Title Formatting
+\titleformat{\section}
+  {\Large\bfseries}{}{0em}{}[\titlerule]
+
+% Reduce space before and after sections
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+
+\begin{document}
+
+\begin{center}
+    {\Huge \textbf{ {{ name }} }}\\
+    \vspace{0.05cm} % Reduced space
+    \href{mailto:{{ email }}}{{ email }} \\
+    {{ phone }} | {{ address }} | \href{https://{{ linkedin }}}{{ linkedin }}
+\end{center}
+
+\section*{About}
+\vspace{0.05cm}
+{{ about }}
+
+{% if skills %}
+\section*{Skills}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt] % Tighter bullets
+{% for skill in skills %}
+  \item {{ skill }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if experience %}
+\section*{Experience}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt]
+{% for item in experience %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if education %}
+\section*{Education}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt]
+{% for item in education %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if projects %}
+\section*{Projects}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt]
+{% for item in projects %}
+  \item {{ item }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if certifications %}
+\section*{Certifications}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt]
+{% for cert in certifications %}
+  \item {{ cert }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+{% if achievements %}
+\section*{Achievements}
+\vspace{0.05cm}
+\begin{itemize}[leftmargin=0.5cm, itemsep=2pt]
+{% for ach in achievements %}
+  \item {{ ach }}
+{% endfor %}
+\end{itemize}
+{% endif %}
+
+\end{document}

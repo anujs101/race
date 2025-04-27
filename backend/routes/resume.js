@@ -8,7 +8,8 @@ const {
   generateEnhancedCoverLetterForResume,
   scoreResumeForATS,
   getAllResumes,
-  extractResumeText
+  extractResumeText,
+  enhanceResumeWithPython
 } = require('../controllers/resumeController');
 const authenticate = require('../middleware/auth');
 const { 
@@ -51,6 +52,9 @@ router.post('/cover-letter/:resumeId', validateCoverLetter, generateCoverLetterF
 
 // Generate enhanced cover letter using Python script
 router.post('/generate-cover-letter/:resumeId', validateEnhancedCoverLetter, generateEnhancedCoverLetterForResume);
+
+// Enhance resume using Python processing
+router.post('/enhance-python/:resumeId', enhanceResumeWithPython);
 
 // Score resume against job description
 router.post('/ats-score/:resumeId', validateEnhancement, scoreResumeForATS);

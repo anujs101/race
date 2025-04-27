@@ -1,0 +1,1 @@
+const { enhanceResume } = require('../utils/pythonBridge'); const sampleData = { data: { resumeId: 'test-id', classification: { contactInfo: { name: 'John Doe' }, education: ['BS'], experience: [{}], skills: [], projects: [] }, isScannedDocument: false } }; console.log('Testing...'); enhanceResume(sampleData).then(r => console.log(r)).catch(e => console.error(e));

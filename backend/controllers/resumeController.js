@@ -1,8 +1,25 @@
 const Resume = require('../models/Resume');
 const { extractTextFromPDF, structureResumeData } = require('../utils/extract');
 const { createEnhancement, generateCoverLetter, scoreATSCompatibility } = require('../utils/gemini');
+let pythonEnhanceResume, generateLatex;
+
+try {
+  // Try to import from the main pythonBridge first
+  const pythonBridge = require('../utils/pythonBridge');
+  pythonEnhanceResume = pythonBridge.enhanceResume;
+  generateLatex = pythonBridge.generateLatex;
+  console.log('Using main Python bridge implementation');
+} catch (error) {
+  // Fall back to minimal bridge if main bridge fails
+  console.log('Main Python bridge failed to load, using minimal implementation');
+  const minimalBridge = require('../utils/minimal-bridge');
+  pythonEnhanceResume = minimalBridge.enhanceResume;
+  generateLatex = () => Promise.resolve('\\documentclass{article}\\begin{document}Minimal LaTeX implementation\\end{document}');
+}
+
 const fs = require('fs');
 const path = require('path');
+const logger = require('../utils/logger');
 
 /**
  * Upload and process a resume
@@ -874,6 +891,288 @@ const generateBasicLatex = (classification) => {
   return latex;
 };
 
+/**
+ * Process resume with Python enhancement
+ * @route POST /api/resume/enhance-python/:resumeId
+ */
+const enhanceResumeWithPython = async (req, res) => {
+  let startTime = Date.now();
+  
+  try {
+    logger.info(`Starting enhanceResumeWithPython for resume: ${req.params.resumeId}`);
+    const { resumeId } = req.params;
+    
+    // Find resume with timeout handling
+    let resume;
+    try {
+      resume = await Promise.race([
+        Resume.findOne({
+          _id: resumeId,
+          userId: req.user._id
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout')), 10000)
+        )
+      ]);
+    } catch (dbError) {
+      logger.error('Database error in enhanceResumeWithPython', { error: dbError });
+      return res.status(500).json({
+        status: 'error',
+        message: 'Database error while fetching resume',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+
+    if (!resume) {
+      logger.warn(`Resume not found: ${resumeId}`);
+      return res.status(404).json({
+        status: 'error',
+        message: 'Resume not found'
+      });
+    }
+    
+    logger.info(`Found resume ${resumeId}, elapsed time: ${Date.now() - startTime}ms`);
+
+    // Get the latest version with classification data
+    let classification = null;
+    let latestVersionData = null;
+    
+    if (resume.versions && resume.versions.length > 0) {
+      latestVersionData = resume.versions[resume.versions.length - 1];
+      if (latestVersionData.classification) {
+        classification = latestVersionData.classification;
+      }
+    }
+
+    // If no classification data is found, extract it first
+    if (!classification) {
+      logger.info(`No classification found for resume ${resumeId}, attempting to classify`);
+      try {
+        // Get or extract text
+        const textToProcess = resume.originalText;
+        
+        if (!textToProcess || textToProcess.trim() === '') {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Resume has no text content to process'
+          });
+        }
+        
+        logger.info(`Classifying resume text of length ${textToProcess.length}`);
+        
+        // Get Gemini API
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        
+        if (!process.env.GEMINI_API_KEY) {
+          logger.error('Gemini API key not found in environment variables');
+          return res.status(500).json({
+            status: 'error',
+            message: 'Gemini API key not configured'
+          });
+        }
+        
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        
+        // Create prompt for classification
+        const prompt = `
+          You are an AI assistant helping to organize and enrich resume content.
+          Given the following extracted resume text, classify it into categories:
+          
+          Contact Information (including name, email, phone number, address, LinkedIn URL)
+          Education
+          Experience (with role, organization, duration, and a short description of what the user did)
+          Projects (with name and a 1-2 sentence description of the project)
+          Skills
+          Certifications
+          Achievements (if any)
+          
+          Respond in the following structured JSON format only:
+          {
+            "contactInfo": {
+              "name": "...",
+              "email": "...",
+              "phone": "...",
+              "address": "...",
+              "linkedin": "..."
+            },
+            "education": [ "..." ],
+            "experience": [
+              {
+                "role": "...",
+                "organization": "...",
+                "duration": "...",
+                "description": "..."
+              }
+            ],
+            "projects": [
+              {
+                "name": "...",
+                "description": "..."
+              }
+            ],
+            "skills": [ "..." ],
+            "certifications": [ "..." ],
+            "achievements": [ "..." ]
+          }
+          
+          Here's the resume text:
+          ${textToProcess}
+        `;
+
+        // Get classification from Gemini with timeout
+        logger.info('Sending prompt to Gemini for classification');
+        let geminiStart = Date.now();
+        
+        let result;
+        try {
+          result = await Promise.race([
+            model.generateContent(prompt),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Gemini API request timeout')), 30000)
+            )
+          ]);
+        } catch (geminiError) {
+          logger.error('Gemini API request failed', { error: geminiError });
+          return res.status(500).json({
+            status: 'error',
+            message: 'Error in Gemini classification',
+            error: process.env.NODE_ENV === 'development' ? geminiError.message : undefined
+          });
+        }
+        
+        logger.info(`Gemini classification completed in ${Date.now() - geminiStart}ms`);
+        
+        const response = await result.response;
+        const textResponse = response.text();
+        
+        // Parse the JSON response
+        try {
+          // Extract JSON from the response (in case there's any markdown or other text)
+          const jsonMatch = textResponse.match(/```json\n([\s\S]*?)\n```/) || 
+                          textResponse.match(/```\n([\s\S]*?)\n```/) ||
+                          [null, textResponse];
+          
+          const jsonString = jsonMatch[1] || textResponse;
+          classification = JSON.parse(jsonString);
+          
+          // Validate the classification structure
+          if (!classification.contactInfo || !classification.education || 
+              !classification.experience || !classification.skills || 
+              !classification.projects) {
+            throw new Error('Invalid classification structure');
+          }
+          
+          // Update the latest version with classification
+          if (latestVersionData) {
+            latestVersionData.classification = classification;
+            await resume.save();
+          } else {
+            // Create a new version with classification if none exists
+            resume.versions.push({
+              version: 'v0',
+              text: resume.originalText,
+              classification: classification,
+              createdAt: new Date()
+            });
+            await resume.save();
+          }
+          
+          logger.info('Successfully saved classification to resume');
+        } catch (error) {
+          logger.error('Error parsing Gemini classification response', { error });
+          return res.status(500).json({
+            status: 'error',
+            message: 'Failed to parse resume classification',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+          });
+        }
+      } catch (error) {
+        logger.error('Error classifying resume with Gemini', { error });
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to classify resume with Gemini',
+          error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      }
+    }
+
+    // Prepare resume data for Python enhancement
+    const resumeData = {
+      data: {
+        resumeId: resume._id.toString(),
+        classification: classification,
+        isScannedDocument: false
+      }
+    };
+
+    // Process with Python enhancement
+    try {
+      logger.info(`Starting Python enhancement for resume ${resumeId}`);
+      let pythonStart = Date.now();
+      
+      // Enhanced resume data from Python
+      const enhancedData = await pythonEnhanceResume(resumeData);
+      
+      logger.info(`Python enhancement completed in ${Date.now() - pythonStart}ms`);
+      
+      // Generate LaTeX from the enhanced data
+      logger.info('Starting LaTeX generation');
+      let latexStart = Date.now();
+      
+      const latexText = await generateLatex(resumeData);
+      
+      logger.info(`LaTeX generation completed in ${Date.now() - latexStart}ms`);
+      
+      // Save the enhanced version
+      try {
+        // Add a new version with the enhancement
+        resume.versions.push({
+          version: `v${resume.versions.length}`,
+          text: resume.originalText,
+          classification: classification,
+          enhancedData: enhancedData,
+          latexText: latexText,
+          createdAt: new Date()
+        });
+        
+        await resume.save();
+        logger.info('Successfully saved enhanced version to resume');
+      } catch (saveError) {
+        logger.error('Error saving enhanced version', { error: saveError });
+        // Continue to return the enhanced data even if saving fails
+      }
+      
+      // Return enhanced resume data
+      logger.info(`Total processing time: ${Date.now() - startTime}ms`);
+      
+      return res.status(200).json({
+        status: 'success',
+        message: 'Resume enhanced successfully with Python',
+        data: {
+          resumeId,
+          enhanced: enhancedData,
+          latexText
+        }
+      });
+    } catch (error) {
+      logger.error('Error enhancing resume with Python', { error });
+      return res.status(500).json({
+        status: 'error',
+        message: 'Server error enhancing resume with Python',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  } catch (error) {
+    logger.error('Error in enhanceResumeWithPython', { error });
+    return res.status(500).json({
+      status: 'error',
+      message: 'Server error processing resume',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   uploadResume,
   enhanceResume,
@@ -883,5 +1182,6 @@ module.exports = {
   generateEnhancedCoverLetterForResume,
   scoreResumeForATS,
   getAllResumes,
-  extractResumeText
+  extractResumeText,
+  enhanceResumeWithPython
 }; 

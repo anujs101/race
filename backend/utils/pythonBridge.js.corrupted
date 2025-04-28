@@ -18,62 +18,7 @@ const PYTHON_WRAPPER_SCRIPT = path.resolve(process.cwd(), '../py_models/enhancer
 const PYTHON_VENV_PATH = path.resolve(process.cwd(), '../py_env/bin/python');
 
 // Default timeout for Python processes (in milliseconds)
-const DEFAULT_TIMEOUT = process.env.PYTHON_TIMEOUT ? parseInt(process.env.PYTHON_TIMEOUT) : 60000; // 60 seconds
-
-// Performance metrics
-const metrics = {
-  functionCalls: 0,
-  totalDuration: 0,
-  maxDuration: 0,
-  errors: 0,
-  lastTimestamps: {}
-};
-
-/**
- * Resolve template file path
- * @param {string} templateName - Name of the template file
- * @returns {Promise<string>} - Full path to the template file
- */
-const resolveTemplatePath = async (templateName) => {
-  // Check each directory for the template
-  for (const dir of TEMPLATE_DIRS) {
-    const templatePath = path.join(dir, templateName);
-    try {
-      await fs.access(templatePath);
-      logger.info(`Found template ${templateName} at ${templatePath}`);
-      return templatePath;
-    } catch (error) {
-      // Template not found in this directory, continue to next
-    }
-  }
-  
-  // If template not found in any directory, throw error
-  throw new Error(`Template ${templateName} not found in any of the configured directories`);
-};
-
-/**
- * Verify required templates exist
- * @returns {Promise<boolean>} - True if all templates exist
- */
-const verifyTemplates = async () => {
-  const requiredTemplates = ['resume_template.tex'];
-  const missingTemplates = [];
-  
-  for (const template of requiredTemplates) {
-    try {
-      await resolveTemplatePath(template);
-    } catch (error) {
-      missingTemplates.push(template);
-    }
-  }
-  
-  if (missingTemplates.length > 0) {
-    logger.warn(`Missing required templates: ${missingTemplates.join(', ')}`);
-    return false;
-  }
-  
-  return true;
-};
+const DEFAULT_TIMEOUT = 60000; // 60 seconds
 
 /**
  * Execute a Python function with the provided arguments
@@ -317,7 +262,10 @@ const generateLearningPath = async (resumeData) => {
  * @param {string} companyName - Name of the company
  * @returns {Promise<string>} - Promise resolving with the cover letter
  */
-const generateCoverLetter = async (resumeData, selectedJobTitle, selectedJobDescription, companyName) => {
+const generateCoverLetter,
+  resolveTemplatePath,
+  verifyTemplates,
+  getPerformanceMetrics = async (resumeData, selectedJobTitle, selectedJobDescription, companyName) => {
   try {
     // Call Python function to generate cover letter
     const result = await executePythonFunction('generate_cover_letter', {
@@ -332,20 +280,6 @@ const generateCoverLetter = async (resumeData, selectedJobTitle, selectedJobDesc
     logger.error('Cover letter generation failed', { error });
     throw new Error(`Cover letter generation failed: ${error.message}`);
   }
-};
-
-/**
- * Get performance metrics
- * @returns {Object} - Current performance metrics
- */
-const getPerformanceMetrics = () => {
-  return {
-    functionCalls: 0,
-    totalDuration: 0,
-    maxDuration: 0,
-    avgDuration: 0,
-    errors: 0
-  };
 };
 
 module.exports = {

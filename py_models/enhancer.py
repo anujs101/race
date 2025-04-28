@@ -9,6 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 import time
 import serpapi
 import json
+from groq import Groq
+import os
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
@@ -123,31 +125,67 @@ def build_prompt(resume_json):
         === Enhanced Resume ===
     """
 
-def query_groq(prompt, model="llama3-8b-8192"):
-    GROQ_API_KEY = "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"
+os.environ["GROQ_API_KEY"] = "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"
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": "You are a resume enhancer AI. Output structured resume sections only."},
-            {"role": "user", "content": prompt}
+client = Groq(api_key=os.environ["GROQ_API_KEY"])
+
+def query_groq(prompt: str) -> str:
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful resume enhancement assistant that interprets user's resume and enhances them while matching their resumes with suitable jobs and suggesting ways to the user to upskill."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
         ],
-        "temperature": 0.7,
-        "max_tokens": 1024
-    }
+        temperature=0.7,
+        max_tokens=1000,
+        top_p=1,
+        stop=None,
+    )
+    return response.choices[0].message.content.strip()
 
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
-    return response.json()["choices"][0]["message"]["content"]
+def structure_user_prompt(user_prompt):
+    """
+    Takes raw user instruction and structures it nicely for LLM.
+    If user_prompt is empty, return empty string.
+    """
+    if not user_prompt.strip():
+        return ""
+    
+    # Otherwise structure it properly
+    return f"""
+    Additional Instructions for Modification:
+
+    {user_prompt}
+
+    Apply these modifications to the resume along with the enhancement.
+    """
+
+def modify_resume(user_prompt="", resume_json=None):
+    if resume_json is None:
+        raise ValueError("Resume JSON must be provided.")
+
+    # Step 1: Structure user instruction
+    structured_instruction = structure_user_prompt(user_prompt)
+
+    # Step 2: Build the basic enhancement prompt
+    base_prompt = build_prompt(resume_json)
+
+    # Step 3: Combine prompts
+    final_prompt = base_prompt + structured_instruction
+
+    # Step 4: Send to Groq (or any LLM)
+    return query_groq(final_prompt)
+
+
 
 def parse_enhanced_resume(resume_json):
-    prompt = build_prompt(resume_json)
-    raw_text = query_groq(prompt)
+    raw_text = modify_resume(resume_json=resume_json)
 
     metadata = resume_json["data"]["classification"]["contactInfo"]
     section_titles = [
@@ -306,19 +344,22 @@ def embed_job_data(job_title, location):
     with open("job_faiss_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)
 
+
 def match_jobs(resume_json):
     enhanced_resume = parse_enhanced_resume(resume_json)
     render_latex(resume_json)
-    
+
     index = faiss.read_index("job_faiss.index")
     
-    with open("job_faiss_metadata.json", "r") as f:
+    with open("job_faiss_metadata.json", "r", encoding="utf-8") as f:
         metadata = json.load(f)
     
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # Ensure model is loaded
     resume_embedding = model.encode([enhanced_resume]).astype("float32")
+
     top_k = 3
     D, I = index.search(resume_embedding, top_k)
-    
+
     matched_jobs = []
 
     for idx in I[0]:
@@ -326,10 +367,11 @@ def match_jobs(resume_json):
         matched_jobs.append({
             "title": job.get('title', ''),
             "company_name": job.get('company_name', ''),
-            "application_link": job.get('application_link', '')
+            "application_link": job.get('application_link', ''),
+            "description": job.get('description', '')  # 🔥 Include description now
         })
     
-    return json.dumps({"matched_jobs": matched_jobs}, indent=2)
+    return json.dumps({"matched_jobs": matched_jobs}, indent=2, ensure_ascii=False)
 
 #---------------------------Entry Point----------------------------
 def generate_learning_path(resume_json) :
@@ -354,6 +396,30 @@ def generate_learning_path(resume_json) :
     return query_groq(rag_prompt)
 
 #----------------------------------------Entry Point----------------------------------------------
+os.environ["GROQ_API_KEY"] = "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"
+
+client = Groq(api_key=os.environ["GROQ_API_KEY"])
+
+def query_groq2(prompt: str) -> str:
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful resume enhancement assistant that interprets user's resume and enhances them while matching their resumes with suitable jobs and suggesting ways to the user to upskill."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        temperature=0.7,
+        max_tokens=1000,
+        top_p=1,
+        stop=None,
+    )
+    return response.choices[0].message.content.strip()
+
 def generate_cover_letter(resume_json, selected_job_title, selected_job_description, company_name):
     enhance_resume = parse_enhanced_resume(resume_json)
     prompt = f"""

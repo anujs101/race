@@ -12,3 +12,4 @@ google-generativeai
 faiss-cpu
 ipywidgets
 tqdm
+groq
